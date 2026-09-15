@@ -1,0 +1,133 @@
+.navbar {
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+[data-theme="dark"] .navbar {
+  box-shadow: 0 1px 8px rgba(0,0,0,0.3);
+}
+
+.navbar-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 20px;
+  height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.navbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: var(--color-text);
+  flex-shrink: 0;
+}
+.navbar-brand:hover { text-decoration: none; }
+
+.navbar-logo { font-size: 22px; line-height: 1; }
+
+.navbar-name {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: var(--color-primary);
+}
+
+.navbar-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.navbar-link {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+}
+.navbar-link:hover {
+  color: var(--color-text);
+  background: var(--color-surface-2);
+  text-decoration: none;
+}
+.navbar-link.active {
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+/* ── Theme Toggle ── */
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 10px;
+  background: var(--color-surface-2);
+  border: 1.5px solid var(--color-border);
+  border-radius: 20px;
+  cursor: pointer;
+  font-family: var(--font);
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
+  white-space: nowrap;
+}
+.theme-toggle:hover {
+  background: var(--color-surface-3);
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
+}
+.theme-toggle:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* The pill track */
+.theme-toggle-track {
+  width: 30px;
+  height: 17px;
+  border-radius: 100px;
+  background: var(--color-border-strong);
+  position: relative;
+  flex-shrink: 0;
+  transition: background 250ms ease;
+}
+[data-theme="dark"] .theme-toggle-track {
+  background: var(--color-primary);
+}
+
+/* The sliding thumb */
+.theme-toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  transition: transform 250ms ease;
+}
+[data-theme="dark"] .theme-toggle-thumb {
+  transform: translateX(13px);
+}
+
+.theme-toggle-label {
+  font-size: 12.5px;
+}
+
+@media (max-width: 600px) {
+  .navbar-link { display: none; }
+  .theme-toggle-label { display: none; }
+  .theme-toggle { padding: 5px 8px; }
+}

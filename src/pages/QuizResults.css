@@ -1,0 +1,348 @@
+.results-page {
+  padding-bottom: 60px;
+}
+
+/* Score Card */
+.results-score-card {
+  background: var(--color-surface);
+  border-radius: var(--radius-xl);
+  border: 2px solid var(--color-border);
+  padding: 36px 28px;
+  text-align: center;
+  margin-bottom: 32px;
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.results-score-card--success {
+  border-color: var(--color-success);
+  background: linear-gradient(to bottom, var(--color-success-light), var(--color-surface));
+}
+
+.results-score-card--danger {
+  border-color: var(--color-danger);
+  background: linear-gradient(to bottom, var(--color-danger-light), var(--color-surface));
+}
+
+.results-score-card--primary {
+  border-color: var(--color-primary);
+  background: linear-gradient(to bottom, var(--color-primary-light), var(--color-surface));
+}
+
+.results-emoji {
+  font-size: 52px;
+  line-height: 1;
+}
+
+.results-score-title {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: var(--color-text);
+}
+
+.results-pct {
+  font-size: 48px;
+  font-weight: 800;
+  letter-spacing: -1px;
+  color: var(--color-primary);
+  line-height: 1.1;
+}
+
+.results-score-card--success .results-pct { color: var(--color-success); }
+.results-score-card--danger .results-pct { color: var(--color-danger); }
+
+.results-message {
+  font-size: 14px;
+  color: var(--color-text-muted);
+  max-width: 320px;
+}
+
+.results-stats {
+  display: flex;
+  gap: 24px;
+  margin: 8px 0;
+}
+
+.results-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.results-stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.results-stat--correct .results-stat-value { color: var(--color-success); }
+.results-stat--incorrect .results-stat-value { color: var(--color-danger); }
+
+.results-stat-label {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.results-bar {
+  width: 100%;
+  max-width: 320px;
+  margin-top: 4px;
+}
+
+/* Review */
+.results-review-header {
+  margin-bottom: 16px;
+}
+
+.results-review-title {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.results-review-sub {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+.review-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.review-item {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  border: 1.5px solid var(--color-border);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: var(--shadow-sm);
+}
+
+.review-item--correct {
+  border-color: var(--color-success);
+}
+
+.review-item--incorrect {
+  border-color: var(--color-danger);
+}
+
+.review-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.review-item-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.review-type-tag {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+.review-type-tag--single {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.review-type-tag--multi {
+  background: var(--color-secondary-light);
+  color: var(--color-secondary);
+}
+
+.review-item-num {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+.review-item-badge {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 20px;
+}
+
+.review-item-badge.correct {
+  background: var(--color-success-light);
+  color: var(--color-success);
+}
+
+.review-item-badge.incorrect {
+  background: var(--color-danger-light);
+  color: var(--color-danger);
+}
+
+.review-question {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
+  line-height: 1.4;
+}
+
+.review-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.review-choice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 13px;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface-2);
+  font-size: 13.5px;
+  color: var(--color-text-muted);
+}
+
+.review-choice--correct {
+  border-color: var(--color-success);
+  background: var(--color-success-light);
+  color: var(--color-success);
+  font-weight: 500;
+}
+
+/* Correct answer the user did NOT select — highlight in amber */
+.review-choice--missed {
+  border-color: var(--color-warning);
+  background: var(--color-warning-light);
+  color: var(--color-warning);
+  font-weight: 500;
+}
+
+.review-choice--wrong {
+  border-color: var(--color-danger);
+  background: var(--color-danger-light);
+  color: var(--color-danger);
+  font-weight: 500;
+}
+
+.review-choice-label {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--color-surface-3);
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.review-choice-text {
+  flex: 1;
+  line-height: 1.4;
+}
+
+.review-indicator {
+  font-weight: 700;
+  font-size: 13px;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.review-indicator--correct {
+  background: var(--color-success);
+  color: #fff;
+}
+
+.review-indicator--wrong {
+  background: var(--color-danger);
+  color: #fff;
+}
+
+.review-indicator--missed {
+  background: var(--color-warning);
+  color: #fff;
+}
+
+.review-correct-star {
+  color: var(--color-warning);
+  font-size: 14px;
+  flex-shrink: 0;
+  margin-left: 2px;
+}
+
+.review-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+  align-items: center;
+}
+
+.review-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.review-unanswered {
+  font-size: 13px;
+  color: var(--color-warning);
+  font-style: italic;
+}
+
+.results-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 480px) {
+  .results-score-card {
+    padding: 28px 18px;
+  }
+
+  .results-pct {
+    font-size: 40px;
+  }
+
+  .results-score-title {
+    font-size: 20px;
+  }
+
+  .results-actions {
+    flex-direction: column-reverse;
+  }
+
+  .results-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
