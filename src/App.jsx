@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Dashboard from './pages/Dashboard';
 import QuizForm from './pages/QuizForm';
@@ -11,7 +11,7 @@ export default function App() {
   return (
     <ErrorBoundary>
     <ThemeProvider>
-    <BrowserRouter>
+    <BrowserRouter basename="/quizly">
       <Navbar />
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         <Routes>
@@ -37,7 +37,7 @@ function NotFound() {
           <div className="empty-state-icon">🔍</div>
           <h3>Page Not Found</h3>
           <p>The page you're looking for doesn't exist.</p>
-          <a href="/" className="btn btn-primary">Go to Dashboard</a>
+          <Link to="/" className="btn btn-primary">Go to Dashboard</Link>
         </div>
       </div>
     </div>
