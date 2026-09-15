@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getAllQuizzes, deleteQuiz, duplicateQuiz, ensureSeeded } from '../data/quizService';
+import { getAllQuizzes, deleteQuiz, duplicateQuiz } from '../data/quizService';
+import { useAuth } from '../context/AuthContext';
 import QuizCard from '../components/QuizCard';
 import SearchBar from '../components/SearchBar';
 import FilterControls from '../components/FilterControls';
@@ -40,16 +41,27 @@ function applyFilters(quizzes, search, category, difficulty, sort) {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { profile, user } = useAuth();
   const [quizzes, setQuizzes] = useState([]);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
   const [difficulty, setDifficulty] = useState('All');
   const [sort, setSort] = useState('newest');
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [loadingQuizzes, setLoadingQuizzes] = useState(true);
+  const [loadError, setLoadError] = useState('');
 
-  const loadQuizzes = useCallback(() => {
-    ensureSeeded();
-    setQuizzes(getAllQuizzes());
+  const loadQuizzes = useCallback(async () => {
+    setLoadingQuizzes(true);
+    setLoadError('');
+    try {
+      const data = await getAllQuizzes();
+      setQuizzes(data);
+    } catch (err) {
+      setLoadError(err.message || 'Failed to load quizzes.');
+    } finally {
+      setLoadingQuizzes(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -58,18 +70,32 @@ export default function Dashboard() {
 
   const handleDelete = (id) => setDeleteTarget(id);
 
-  const confirmDelete = () => {
-    if (deleteTarget) {
-      deleteQuiz(deleteTarget);
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      await deleteQuiz(deleteTarget);
       setDeleteTarget(null);
-      loadQuizzes();
+      await loadQuizzes();
+    } catch (err) {
+      setLoadError(err.message || 'Failed to delete quiz.');
+      setDeleteTarget(null);
     }
   };
 
-  const handleDuplicate = (id) => {
-    duplicateQuiz(id);
-    loadQuizzes();
+  const handleDuplicate = async (id) => {
+    try {
+      await duplicateQuiz(id);
+      await loadQuizzes();
+    } catch (err) {
+      setLoadError(err.message || 'Failed to duplicate quiz.');
+    }
   };
+
+  const greeting = profile?.full_name
+    ? `Welcome back, ${profile.full_name.split(' ')[0]}! ⚡`
+    : user?.email
+      ? `Welcome back! ⚡`
+      : 'Welcome to Quizly ⚡';
 
   const filtered = applyFilters(quizzes, search, category, difficulty, sort);
   const hasFilters = search || category !== 'All' || difficulty !== 'All';
@@ -79,7 +105,7 @@ export default function Dashboard() {
       {/* Hero */}
       <section className="dashboard-hero">
         <div>
-          <h1 className="dashboard-hero-title">Welcome to Quizly ⚡</h1>
+          <h1 className="dashboard-hero-title">{greeting}</h1>
           <p className="dashboard-hero-sub">
             Create, study, and master any subject with custom quizzes.
           </p>
@@ -88,6 +114,12 @@ export default function Dashboard() {
           + Create Quiz
         </button>
       </section>
+
+      {loadError && (
+        <div className="alert alert-error" style={{ marginBottom: 16 }} role="alert">
+          {loadError}
+        </div>
+      )}
 
       {/* Controls */}
       <section className="dashboard-controls">
@@ -106,14 +138,19 @@ export default function Dashboard() {
       <div className="dashboard-list-header">
         <h2 className="dashboard-section-title">
           My Quizzes
-          {quizzes.length > 0 && (
+          {!loadingQuizzes && quizzes.length > 0 && (
             <span className="dashboard-count">{filtered.length} of {quizzes.length}</span>
           )}
         </h2>
       </div>
 
-      {/* Grid */}
-      {filtered.length > 0 ? (
+      {/* Loading */}
+      {loadingQuizzes ? (
+        <div className="dashboard-loading">
+          <div className="dashboard-spinner" />
+          <p>Loading your quizzes…</p>
+        </div>
+      ) : filtered.length > 0 ? (
         <div className="quiz-grid">
           {filtered.map((quiz) => (
             <QuizCard

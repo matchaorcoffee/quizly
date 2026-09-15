@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getQuizById } from '../data/quizService';
 import ProgressBar from '../components/ProgressBar';
@@ -22,10 +22,6 @@ function shuffleArray(arr) {
 /**
  * answers shape: { [questionId]: string[] }
  * Always an array of selected choice IDs, even for single-choice.
- *
- * The `questions` array used throughout the player is the *session order*
- * (shuffled once on mount if quiz.shuffleQuestions is true).
- * The original quiz.questions array is NEVER modified.
  */
 export default function QuizPlayer() {
   const navigate = useNavigate();
@@ -35,23 +31,47 @@ export default function QuizPlayer() {
   const [answers, setAnswers] = useState({});
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [notFound, setNotFound] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
 
-  // Stable ref so shuffled order is computed exactly once per mount,
-  // regardless of any future re-renders.
+  // Stable ref so shuffled order is computed exactly once per mount.
   const sessionQuestionsRef = useRef(null);
 
   useEffect(() => {
-    const q = getQuizById(id);
-    if (!q) { setNotFound(true); return; }
-    if (!q.questions || q.questions.length === 0) { setNotFound(true); return; }
-    setQuiz(q);
-
-    // Compute (and freeze) the session question order on first load.
-    // shuffleQuestions = true → random order; false/undefined → original order.
-    sessionQuestionsRef.current = q.shuffleQuestions
-      ? shuffleArray(q.questions)
-      : [...q.questions];
+    setLoading(true);
+    getQuizById(id)
+      .then((q) => {
+        if (!q || !q.questions || q.questions.length === 0) {
+          setNotFound(true);
+          return;
+        }
+        setQuiz(q);
+        sessionQuestionsRef.current = q.shuffleQuestions
+          ? shuffleArray(q.questions)
+          : [...q.questions];
+      })
+      .catch((err) => {
+        setLoadError(err.message || 'Failed to load quiz.');
+      })
+      .finally(() => setLoading(false));
   }, [id]);
+
+  if (loading) {
+    return (
+      <div className="page-container-narrow" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 300 }}>
+        <div style={{ width: 36, height: 36, border: '3px solid var(--color-border)', borderTopColor: 'var(--color-primary)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="page-container-narrow">
+        <div className="alert alert-error" role="alert">{loadError}</div>
+        <button className="btn btn-secondary" style={{ marginTop: 16 }} onClick={() => navigate('/')}>← Back to Dashboard</button>
+      </div>
+    );
+  }
 
   if (notFound) {
     return (
@@ -107,9 +127,6 @@ export default function QuizPlayer() {
   };
 
   const doSubmit = () => {
-    // Pass the session-ordered questions so the results page shows them
-    // in the order the learner saw them. Scoring still works because it
-    // matches answers by question ID, not by position.
     navigate(`/results/${id}`, { state: { answers, questions } });
   };
 

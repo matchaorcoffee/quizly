@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { getQuizById } from '../data/quizService';
 import ProgressBar from '../components/ProgressBar';
@@ -29,7 +30,6 @@ function getScoreMessage(pct) {
 
 /**
  * Exact-set scoring: correct only when selected set === correct set.
- * answers[q.id] is always string[] (may be undefined/empty for unanswered).
  */
 function isQuestionCorrect(q, answers) {
   const selected = answers[q.id] || [];
@@ -42,9 +42,25 @@ export default function QuizResults() {
   const navigate = useNavigate();
   const { id } = useParams();
   const location = useLocation();
-
-  const quiz = getQuizById(id);
   const state = location.state;
+
+  const [quiz, setQuiz] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getQuizById(id)
+      .then((q) => setQuiz(q))
+      .catch(() => setQuiz(null))
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="page-container-narrow" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 300 }}>
+        <div style={{ width: 36, height: 36, border: '3px solid var(--color-border)', borderTopColor: 'var(--color-primary)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+      </div>
+    );
+  }
 
   if (!quiz || !state) {
     return (
@@ -132,11 +148,6 @@ export default function QuizResults() {
                   const wasSelected = selectedIds.includes(choice.id);
                   const isCorrectChoice = correctIds.includes(choice.id);
 
-                  // Classify this row
-                  // correct + selected  → green
-                  // correct + not selected → yellow (missed)
-                  // wrong + selected → red
-                  // wrong + not selected → neutral
                   let cls = 'review-choice';
                   let indicator = null;
 

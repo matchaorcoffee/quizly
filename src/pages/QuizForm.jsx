@@ -72,28 +72,32 @@ export default function QuizForm() {
   const [questionErrors, setQuestionErrors] = useState({});
   const [submitted, setSubmitted] = useState(false);
   const [notFound, setNotFound] = useState(false);
+  const [loadingForm, setLoadingForm] = useState(isEditing);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   useEffect(() => {
-    if (isEditing) {
-      const existing = getQuizById(id);
-      if (!existing) {
-        setNotFound(true);
-        return;
-      }
-      setForm({
-        title: existing.title,
-        description: existing.description || '',
-        category: existing.category || '',
-        difficulty: existing.difficulty || '',
-        shuffleQuestions: existing.shuffleQuestions ?? false,
-      });
-      setQuestions(existing.questions.map((q) => ({
-        ...q,
-        questionType: q.questionType || 'single_choice',
-        correctAnswers: q.correctAnswers || (q.correctAnswer ? [q.correctAnswer] : []),
-        choices: q.choices.map((c) => ({ ...c })),
-      })));
-    }
+    if (!isEditing) return;
+    setLoadingForm(true);
+    getQuizById(id)
+      .then((existing) => {
+        if (!existing) { setNotFound(true); return; }
+        setForm({
+          title: existing.title,
+          description: existing.description || '',
+          category: existing.category || '',
+          difficulty: existing.difficulty || '',
+          shuffleQuestions: existing.shuffleQuestions ?? false,
+        });
+        setQuestions(existing.questions.map((q) => ({
+          ...q,
+          questionType: q.questionType || 'single_choice',
+          correctAnswers: q.correctAnswers || [],
+          choices: q.choices.map((c) => ({ ...c })),
+        })));
+      })
+      .catch(() => setNotFound(true))
+      .finally(() => setLoadingForm(false));
   }, [id, isEditing]);
 
   const updateForm = (field, value) => {
@@ -128,35 +132,55 @@ export default function QuizForm() {
     setQuestionErrors(qe);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setSubmitted(true);
+    setSaveError('');
     const { errors: e, questionErrors: qe, isValid } = validateQuiz(form, questions);
     setErrors(e);
     setQuestionErrors(qe);
     if (!isValid) {
-      // Scroll to first error
       const firstErrorEl = document.querySelector('.question-editor--error, .form-error');
       firstErrorEl?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
 
-    const now = new Date().toISOString();
-    const quiz = {
-      id: isEditing ? id : uuidv4(),
-      title: form.title.trim(),
-      description: form.description.trim(),
-      category: form.category || 'General',
-      difficulty: form.difficulty || 'Easy',
-      shuffleQuestions: form.shuffleQuestions,
-      isSeed: false,
-      createdAt: isEditing ? getQuizById(id)?.createdAt || now : now,
-      updatedAt: now,
-      questions,
-    };
-
-    saveQuiz(quiz);
-    navigate('/');
+    setSaving(true);
+    try {
+      const now = new Date().toISOString();
+      let existingCreatedAt = now;
+      if (isEditing) {
+        try {
+          const existing = await getQuizById(id);
+          existingCreatedAt = existing?.createdAt || now;
+        } catch { /* use now */ }
+      }
+      const quiz = {
+        id: isEditing ? id : uuidv4(),
+        title: form.title.trim(),
+        description: form.description.trim(),
+        category: form.category || 'General',
+        difficulty: form.difficulty || 'Easy',
+        shuffleQuestions: form.shuffleQuestions,
+        createdAt: isEditing ? existingCreatedAt : now,
+        updatedAt: now,
+        questions,
+      };
+      await saveQuiz(quiz);
+      navigate('/');
+    } catch (err) {
+      setSaveError(err.message || 'Failed to save quiz. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
+
+  if (loadingForm) {
+    return (
+      <div className="page-container-narrow" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 300 }}>
+        <div style={{ width: 36, height: 36, border: '3px solid var(--color-border)', borderTopColor: 'var(--color-primary)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+      </div>
+    );
+  }
 
   if (notFound) {
     return (
@@ -190,6 +214,10 @@ export default function QuizForm() {
         <div className="alert alert-error" role="alert">
           Please fix the errors below before saving.
         </div>
+      )}
+
+      {saveError && (
+        <div className="alert alert-error" role="alert">{saveError}</div>
       )}
 
       {/* Quiz meta */}
@@ -308,11 +336,12 @@ export default function QuizForm() {
 
       {/* Actions */}
       <div className="quiz-form-actions">
-        <button type="button" className="btn btn-secondary" onClick={() => navigate('/')}>
+        <button type="button" className="btn btn-secondary" onClick={() => navigate('/')} disabled={saving}>
           Cancel
         </button>
-        <button type="button" className="btn btn-primary btn-lg" onClick={handleSave}>
-          {isEditing ? '💾 Save Changes' : '✓ Save Quiz'}
+        <button type="button" className="btn btn-primary btn-lg" onClick={handleSave} disabled={saving}>
+          {saving ? <span style={{ display: 'inline-block', width: 14, height: 14, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} /> : null}
+          {saving ? ' Saving…' : isEditing ? '💾 Save Changes' : '✓ Save Quiz'}
         </button>
       </div>
     </div>
