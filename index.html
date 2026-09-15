@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/quizly/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Quizly ⚡ — Create & Take Quizzes</title>
+    <meta name="description" content="Quizly: create custom multiple-choice quizzes, study, and track your scores." />
+    <!-- Anti-flash: apply saved theme before first paint -->
+    <script>
+      (function() {
+        try {
+          var saved = localStorage.getItem('quizly_theme');
+          if (saved === 'dark' || saved === 'light') {
+            document.documentElement.setAttribute('data-theme', saved);
+          } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.setAttribute('data-theme', 'dark');
+          }
+        } catch(e) {}
+      })();
+    </script>
+    <script type="module" crossorigin src="/quizly/assets/index-Bn9bf9IN.js"></script>
+    <link rel="stylesheet" crossorigin href="/quizly/assets/index-DvzqJ7NB.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
