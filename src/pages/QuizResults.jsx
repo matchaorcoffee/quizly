@@ -5,6 +5,27 @@ import ProgressBar from '../components/ProgressBar';
 import './QuizResults.css';
 
 const CHOICE_LABELS = ['A', 'B', 'C', 'D'];
+const BLANK_TOKEN = '{{blank}}';
+
+/** Normalise a string for case-insensitive, whitespace-tolerant comparison. */
+function normAnswer(str) {
+  return (str || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+/** Render a fill-in-blank question text with blanks shown as underscores. */
+function FibQuestionDisplay({ text }) {
+  const parts = text.split(BLANK_TOKEN);
+  return (
+    <p className="review-question">
+      {parts.map((part, i) => (
+        <span key={i}>
+          {part}
+          {i < parts.length - 1 && <span className="fib-blank-display">______</span>}
+        </span>
+      ))}
+    </p>
+  );
+}
 
 function getScoreVariant(pct) {
   if (pct >= 80) return 'success';
@@ -29,9 +50,18 @@ function getScoreMessage(pct) {
 }
 
 /**
- * Exact-set scoring: correct only when selected set === correct set.
+ * Unified scoring for all question types.
+ * - single_choice / multiple_choice: exact set match on IDs
+ * - fill_in_blank: typed answer matches any acceptedAnswer (case-insensitive, trimmed)
  */
 function isQuestionCorrect(q, answers) {
+  if (q.questionType === 'fill_in_blank') {
+    const typed = normAnswer((answers[q.id] || [])[0]);
+    if (!typed) return false;
+    const accepted = (q.acceptedAnswers || []).map(normAnswer);
+    return accepted.some((a) => a === typed);
+  }
+  // single / multiple choice
   const selected = answers[q.id] || [];
   const correct = q.correctAnswers || [];
   if (selected.length !== correct.length) return false;
@@ -48,11 +78,17 @@ export default function QuizResults() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (state?.quiz) {
+      setQuiz(state.quiz);
+      setLoading(false);
+      return;
+    }
+
     getQuizById(id)
       .then((q) => setQuiz(q))
       .catch(() => setQuiz(null))
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, state]);
 
   if (loading) {
     return (
@@ -120,9 +156,22 @@ export default function QuizResults() {
       <div className="review-list">
         {questions.map((q, i) => {
           const qCorrect = isQuestionCorrect(q, answers);
+          const isFib = q.questionType === 'fill_in_blank';
+          const isMultiple = q.questionType === 'multiple_choice';
           const selectedIds = answers[q.id] || [];
           const correctIds = q.correctAnswers || [];
-          const isMultiple = q.questionType === 'multiple_choice';
+
+          // FIB-specific values
+          const typedAnswer = isFib ? ((answers[q.id] || [])[0] || '') : '';
+          const acceptedAnswers = isFib ? (q.acceptedAnswers || []) : [];
+
+          // Type tag
+          const typeTagCls = isFib
+            ? 'review-type-tag review-type-tag--fib'
+            : isMultiple
+              ? 'review-type-tag review-type-tag--multi'
+              : 'review-type-tag review-type-tag--single';
+          const typeLabel = isFib ? '▭ Fill Blank' : isMultiple ? '☑ Multiple' : '◉ Single';
 
           return (
             <div
@@ -132,63 +181,89 @@ export default function QuizResults() {
               <div className="review-item-header">
                 <div className="review-item-header-left">
                   <span className="review-item-num">Q{i + 1}</span>
-                  <span className={`review-type-tag ${isMultiple ? 'review-type-tag--multi' : 'review-type-tag--single'}`}>
-                    {isMultiple ? '☑ Multiple' : '◉ Single'}
-                  </span>
+                  <span className={typeTagCls}>{typeLabel}</span>
                 </div>
                 <span className={`review-item-badge ${qCorrect ? 'correct' : 'incorrect'}`}>
                   {qCorrect ? '✓ Correct' : '✗ Incorrect'}
                 </span>
               </div>
 
-              <p className="review-question">{q.questionText}</p>
+              {/* Question text — FIB renders blanks as underscores */}
+              {isFib
+                ? <FibQuestionDisplay text={q.questionText} />
+                : <p className="review-question">{q.questionText}</p>
+              }
 
-              <div className="review-choices">
-                {q.choices.map((choice, ci) => {
-                  const wasSelected = selectedIds.includes(choice.id);
-                  const isCorrectChoice = correctIds.includes(choice.id);
-
-                  let cls = 'review-choice';
-                  let indicator = null;
-
-                  if (isCorrectChoice && wasSelected) {
-                    cls += ' review-choice--correct';
-                    indicator = <span className="review-indicator review-indicator--correct">✓</span>;
-                  } else if (isCorrectChoice && !wasSelected) {
-                    cls += ' review-choice--missed';
-                    indicator = <span className="review-indicator review-indicator--missed">→</span>;
-                  } else if (!isCorrectChoice && wasSelected) {
-                    cls += ' review-choice--wrong';
-                    indicator = <span className="review-indicator review-indicator--wrong">✗</span>;
-                  }
-
-                  return (
-                    <div key={choice.id} className={cls}>
-                      <span className="review-choice-label">{CHOICE_LABELS[ci]}</span>
-                      <span className="review-choice-text">{choice.text}</span>
-                      {indicator}
-                      {isCorrectChoice && (
-                        <span className="review-correct-star" title="Correct answer">★</span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Legend */}
-              <div className="review-legend">
-                {selectedIds.length === 0 ? (
-                  <span className="review-unanswered">⚠️ Not answered</span>
-                ) : (
-                  <>
-                    {isMultiple && (
-                      <span className="review-legend-item">
-                        <span className="review-indicator review-indicator--missed">→</span> Correct answer you missed
+              {/* FIB answer review */}
+              {isFib ? (
+                <div className="fib-review-block">
+                  <div className={`fib-review-row fib-review-row--typed ${qCorrect ? 'fib-review-row--ok' : 'fib-review-row--wrong'}`}>
+                    <span className="fib-review-label">Your answer:</span>
+                    <span className="fib-review-value">
+                      {typedAnswer || <em className="fib-review-empty">Not answered</em>}
+                    </span>
+                    <span className={`review-indicator ${qCorrect ? 'review-indicator--correct' : 'review-indicator--wrong'}`}>
+                      {qCorrect ? '✓' : '✗'}
+                    </span>
+                  </div>
+                  {!qCorrect && (
+                    <div className="fib-review-row fib-review-row--accepted">
+                      <span className="fib-review-label">Accepted answer{acceptedAnswers.length > 1 ? 's' : ''}:</span>
+                      <span className="fib-review-value fib-review-value--correct">
+                        {acceptedAnswers.length > 0 ? acceptedAnswers.join(' / ') : '—'}
                       </span>
+                      <span className="review-indicator review-indicator--missed">→</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* Choice-based review */
+                <>
+                  <div className="review-choices">
+                    {q.choices.map((choice, ci) => {
+                      const wasSelected = selectedIds.includes(choice.id);
+                      const isCorrectChoice = correctIds.includes(choice.id);
+
+                      let cls = 'review-choice';
+                      let indicator = null;
+
+                      if (isCorrectChoice && wasSelected) {
+                        cls += ' review-choice--correct';
+                        indicator = <span className="review-indicator review-indicator--correct">✓</span>;
+                      } else if (isCorrectChoice && !wasSelected) {
+                        cls += ' review-choice--missed';
+                        indicator = <span className="review-indicator review-indicator--missed">→</span>;
+                      } else if (!isCorrectChoice && wasSelected) {
+                        cls += ' review-choice--wrong';
+                        indicator = <span className="review-indicator review-indicator--wrong">✗</span>;
+                      }
+
+                      return (
+                        <div key={choice.id} className={cls}>
+                          <span className="review-choice-label">{CHOICE_LABELS[ci]}</span>
+                          <span className="review-choice-text">{choice.text}</span>
+                          {indicator}
+                          {isCorrectChoice && (
+                            <span className="review-correct-star" title="Correct answer">★</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="review-legend">
+                    {selectedIds.length === 0 ? (
+                      <span className="review-unanswered">⚠️ Not answered</span>
+                    ) : (
+                      isMultiple && (
+                        <span className="review-legend-item">
+                          <span className="review-indicator review-indicator--missed">→</span> Correct answer you missed
+                        </span>
+                      )
                     )}
-                  </>
-                )}
-              </div>
+                  </div>
+                </>
+              )}
             </div>
           );
         })}
@@ -196,8 +271,8 @@ export default function QuizResults() {
 
       {/* Actions */}
       <div className="results-actions">
-        <button className="btn btn-secondary" onClick={() => navigate('/')}>← Dashboard</button>
-        <button className="btn btn-primary btn-lg" onClick={() => navigate(`/quiz/${id}`)}>🔁 Retake Quiz</button>
+        <button className="btn btn-secondary" onClick={() => navigate('/explore')}>🌎 Explore More</button>
+        <button className="btn btn-primary btn-lg" onClick={() => navigate(`/quiz/${id}`, { state: state?.quiz ? { preloadedQuiz: state.quiz } : undefined })}>🔁 Retake Quiz</button>
       </div>
     </div>
   );

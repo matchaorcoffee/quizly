@@ -190,3 +190,128 @@
   color: var(--color-text-muted);
   margin-top: 1px;
 }
+
+/* ── Fill in the Blank — editor styles ── */
+
+.fib-token-hint {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 12px;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+}
+
+/* Live preview box */
+.fib-preview-box {
+  background: var(--color-surface-2);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  transition: border-color var(--transition);
+}
+
+.fib-preview-box--warn {
+  border-color: var(--color-warning);
+}
+
+.fib-preview-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-light);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.fib-preview-warn {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-warning);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.fib-preview-warn code {
+  background: var(--color-warning-light);
+  color: var(--color-warning);
+  border-radius: 3px;
+  padding: 0 4px;
+  font-size: 11px;
+  font-family: 'SFMono-Regular', Consolas, monospace;
+}
+
+.fib-preview-text {
+  font-size: 14.5px;
+  color: var(--color-text);
+  line-height: 1.6;
+}
+
+.fib-preview-empty {
+  color: var(--color-text-light);
+  font-style: italic;
+}
+
+.fib-blank-preview {
+  display: inline-block;
+  font-weight: 700;
+  color: var(--color-primary);
+  border-bottom: 2.5px solid var(--color-primary);
+  padding: 0 6px;
+  margin: 0 2px;
+  letter-spacing: 2px;
+  min-width: 56px;
+  text-align: center;
+}
+
+/* Accepted answers section */
+.fib-answers-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fib-answers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fib-answer-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fib-answer-num {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  min-width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.fib-answer-input {
+  flex: 1;
+}
+
+.fib-answer-remove {
+  flex-shrink: 0;
+  color: var(--color-danger);
+  padding: 4px 8px;
+}
+
+.fib-answer-remove:hover {
+  background: var(--color-danger-light);
+  color: var(--color-danger);
+}
+
+.fib-add-answer-btn {
+  align-self: flex-start;
+  margin-top: 2px;
+}

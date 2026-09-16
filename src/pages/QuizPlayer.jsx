@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { getQuizById } from '../data/quizService';
 import ProgressBar from '../components/ProgressBar';
 import ConfirmationModal from '../components/ConfirmationModal';
 import './QuizPlayer.css';
 
 const CHOICE_LABELS = ['A', 'B', 'C', 'D'];
+const BLANK_TOKEN = '{{blank}}';
 
 /**
  * Fisher-Yates shuffle — returns a NEW array, never mutates the original.
@@ -20,24 +21,71 @@ function shuffleArray(arr) {
 }
 
 /**
+ * Renders a fill-in-blank question with an inline text input replacing {{blank}}.
+ * answers shape: { [questionId]: string[] }  — for FIB the array holds [typedText]
+ */
+function FillInBlankQuestion({ question, answers, onAnswer }) {
+  const parts = question.questionText.split(BLANK_TOKEN);
+  const typed = (answers[question.id] || [])[0] ?? '';
+
+  return (
+    <div className="fib-question-wrap">
+      <p className="fib-inline-text" aria-label={`Question: ${question.questionText}`}>
+        {parts.map((part, i) => (
+          <span key={i}>
+            {part}
+            {i < parts.length - 1 && (
+              <input
+                type="text"
+                className="fib-inline-input"
+                value={typed}
+                onChange={(e) => onAnswer(question.id, e.target.value)}
+                placeholder="Type answer…"
+                aria-label="Fill in the blank"
+                autoComplete="off"
+                spellCheck="false"
+                maxLength={200}
+              />
+            )}
+          </span>
+        ))}
+      </p>
+    </div>
+  );
+}
+
+/**
  * answers shape: { [questionId]: string[] }
- * Always an array of selected choice IDs, even for single-choice.
+ * For single/multiple choice: array of selected choice IDs
+ * For fill_in_blank: array with one string [typedText]
  */
 export default function QuizPlayer() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const [quiz, setQuiz] = useState(null);
+  const location = useLocation();
+  const preloadedQuiz = location.state?.preloadedQuiz;
+
+  const [quiz, setQuiz] = useState(preloadedQuiz || null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState({});
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [notFound, setNotFound] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!preloadedQuiz);
   const [loadError, setLoadError] = useState('');
 
   // Stable ref so shuffled order is computed exactly once per mount.
   const sessionQuestionsRef = useRef(null);
 
   useEffect(() => {
+    if (preloadedQuiz && preloadedQuiz.questions?.length > 0) {
+      setQuiz(preloadedQuiz);
+      sessionQuestionsRef.current = preloadedQuiz.shuffleQuestions
+        ? shuffleArray(preloadedQuiz.questions)
+        : [...preloadedQuiz.questions];
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     getQuizById(id)
       .then((q) => {
@@ -54,7 +102,7 @@ export default function QuizPlayer() {
         setLoadError(err.message || 'Failed to load quiz.');
       })
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, preloadedQuiz]);
 
   if (loading) {
     return (
@@ -68,7 +116,7 @@ export default function QuizPlayer() {
     return (
       <div className="page-container-narrow">
         <div className="alert alert-error" role="alert">{loadError}</div>
-        <button className="btn btn-secondary" style={{ marginTop: 16 }} onClick={() => navigate('/')}>← Back to Dashboard</button>
+        <button className="btn btn-secondary" style={{ marginTop: 16 }} onClick={() => navigate('/explore')}>← Browse Quizzes</button>
       </div>
     );
   }
@@ -80,8 +128,11 @@ export default function QuizPlayer() {
           <div className="empty-state">
             <div className="empty-state-icon">❓</div>
             <h3>Quiz not found</h3>
-            <p>This quiz doesn't exist or may have been deleted.</p>
-            <button className="btn btn-primary" onClick={() => navigate('/')}>Back to Dashboard</button>
+            <p>This quiz doesn't exist, is private, or may have been deleted.</p>
+            <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+              <button className="btn btn-primary" onClick={() => navigate('/explore')}>Explore Quizzes</button>
+              <button className="btn btn-secondary" onClick={() => navigate('/')}>Dashboard</button>
+            </div>
           </div>
         </div>
       </div>
@@ -90,31 +141,35 @@ export default function QuizPlayer() {
 
   if (!quiz || !sessionQuestionsRef.current) return null;
 
-  // Use the stable session order for all rendering and navigation.
   const questions = sessionQuestionsRef.current;
   const totalQ = questions.length;
   const currentQ = questions[currentIndex];
   const isMultiple = currentQ.questionType === 'multiple_choice';
+  const isFillBlank = currentQ.questionType === 'fill_in_blank';
 
-  // Selected IDs for the current question (always an array)
+  // Selected IDs for choice questions; typed text for fill-in-blank
   const selectedIds = answers[currentQ.id] || [];
 
-  // A question is "answered" if at least one choice is selected
-  const answeredCount = Object.values(answers).filter((arr) => arr.length > 0).length;
+  // A question is "answered" if:
+  // - choice: at least one ID selected
+  // - fill_in_blank: typed text is non-empty
+  const answeredCount = Object.values(answers).filter((arr) => arr.length > 0 && (arr[0] !== '')).length;
   const isLast = currentIndex === totalQ - 1;
 
-  // Single choice: replace selection
   const selectSingle = (choiceId) => {
     setAnswers((prev) => ({ ...prev, [currentQ.id]: [choiceId] }));
   };
 
-  // Multiple choice: toggle
   const toggleMulti = (choiceId) => {
     const current = answers[currentQ.id] || [];
     const updated = current.includes(choiceId)
       ? current.filter((c) => c !== choiceId)
       : [...current, choiceId];
     setAnswers((prev) => ({ ...prev, [currentQ.id]: updated }));
+  };
+
+  const setFillBlankAnswer = (questionId, text) => {
+    setAnswers((prev) => ({ ...prev, [questionId]: text ? [text] : [] }));
   };
 
   const goNext = () => { if (currentIndex < totalQ - 1) setCurrentIndex(currentIndex + 1); };
@@ -127,15 +182,22 @@ export default function QuizPlayer() {
   };
 
   const doSubmit = () => {
-    navigate(`/results/${id}`, { state: { answers, questions } });
+    navigate(`/results/${id}`, { state: { answers, questions, quiz } });
   };
+
+  // Type tag for the current question
+  const typeTag = isFillBlank
+    ? <span className="player-type-tag player-type-tag--fib">▭ Fill in the blank</span>
+    : isMultiple
+      ? <span className="player-type-tag player-type-tag--multi">☑ Select all that apply</span>
+      : <span className="player-type-tag player-type-tag--single">◉ Choose one answer</span>;
 
   return (
     <div className="page-container-narrow quiz-player">
       {/* Quiz Header */}
       <div className="player-header">
         <div className="player-header-top">
-          <button className="btn btn-ghost btn-sm" onClick={() => navigate('/')}>← Back</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => navigate(-1)}>← Back</button>
           <div className="player-header-top-right">
             {quiz.shuffleQuestions && (
               <span className="player-shuffle-badge" title="Questions are shuffled for this attempt">
@@ -155,55 +217,61 @@ export default function QuizPlayer() {
           />
         </div>
         <div className="player-dots">
-          {questions.map((q, i) => (
-            <button
-              key={q.id}
-              className={`player-dot ${i === currentIndex ? 'current' : ''} ${(answers[q.id] || []).length > 0 ? 'answered' : ''}`}
-              onClick={() => setCurrentIndex(i)}
-              aria-label={`Go to question ${i + 1}${(answers[q.id] || []).length > 0 ? ' (answered)' : ''}`}
-              title={`Q${i + 1}`}
-            />
-          ))}
+          {questions.map((q, i) => {
+            const ans = answers[q.id] || [];
+            const isAnswered = ans.length > 0 && ans[0] !== '';
+            return (
+              <button
+                key={q.id}
+                className={`player-dot ${i === currentIndex ? 'current' : ''} ${isAnswered ? 'answered' : ''}`}
+                onClick={() => setCurrentIndex(i)}
+                aria-label={`Go to question ${i + 1}${isAnswered ? ' (answered)' : ''}`}
+                title={`Q${i + 1}`}
+              />
+            );
+          })}
         </div>
       </div>
 
       {/* Question Card */}
       <div className="card player-question-card animate-in" key={currentQ.id}>
-        {/* Type badge */}
-        <div className="player-question-type-badge">
-          {isMultiple
-            ? <span className="player-type-tag player-type-tag--multi">☑ Select all that apply</span>
-            : <span className="player-type-tag player-type-tag--single">◉ Choose one answer</span>
-          }
-        </div>
+        <div className="player-question-type-badge">{typeTag}</div>
 
-        <p className="player-question-text">{currentQ.questionText}</p>
-
-        <div className="player-choices">
-          {currentQ.choices.map((choice, ci) => {
-            const isSelected = selectedIds.includes(choice.id);
-            return (
-              <button
-                key={choice.id}
-                className={`player-choice ${isSelected ? 'player-choice--selected' : ''}`}
-                onClick={() => isMultiple ? toggleMulti(choice.id) : selectSingle(choice.id)}
-                role={isMultiple ? 'checkbox' : 'radio'}
-                aria-checked={isSelected}
-              >
-                <span className={`player-choice-control ${isMultiple ? 'player-choice-control--checkbox' : ''} ${isSelected ? 'player-choice-control--checked' : ''}`}>
-                  {isSelected ? (isMultiple ? '✓' : '●') : ''}
-                </span>
-                <span className="player-choice-label">{CHOICE_LABELS[ci]}</span>
-                <span className="player-choice-text">{choice.text}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {isMultiple && selectedIds.length > 0 && (
-          <p className="player-multi-hint">
-            {selectedIds.length} answer{selectedIds.length !== 1 ? 's' : ''} selected
-          </p>
+        {isFillBlank ? (
+          <FillInBlankQuestion
+            question={currentQ}
+            answers={answers}
+            onAnswer={setFillBlankAnswer}
+          />
+        ) : (
+          <>
+            <p className="player-question-text">{currentQ.questionText}</p>
+            <div className="player-choices">
+              {currentQ.choices.map((choice, ci) => {
+                const isSelected = selectedIds.includes(choice.id);
+                return (
+                  <button
+                    key={choice.id}
+                    className={`player-choice ${isSelected ? 'player-choice--selected' : ''}`}
+                    onClick={() => isMultiple ? toggleMulti(choice.id) : selectSingle(choice.id)}
+                    role={isMultiple ? 'checkbox' : 'radio'}
+                    aria-checked={isSelected}
+                  >
+                    <span className={`player-choice-control ${isMultiple ? 'player-choice-control--checkbox' : ''} ${isSelected ? 'player-choice-control--checked' : ''}`}>
+                      {isSelected ? (isMultiple ? '✓' : '●') : ''}
+                    </span>
+                    <span className="player-choice-label">{CHOICE_LABELS[ci]}</span>
+                    <span className="player-choice-text">{choice.text}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {isMultiple && selectedIds.length > 0 && (
+              <p className="player-multi-hint">
+                {selectedIds.length} answer{selectedIds.length !== 1 ? 's' : ''} selected
+              </p>
+            )}
+          </>
         )}
       </div>
 

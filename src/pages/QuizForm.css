@@ -86,6 +86,88 @@
   }
 }
 
+/* ── Segmented Control for Visibility ── */
+.segmented-control {
+  display: flex;
+  background: var(--color-surface-2);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 4px;
+  gap: 4px;
+}
+
+.segmented-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  font-size: 13.5px;
+  font-weight: 500;
+  font-family: var(--font);
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.segmented-btn:hover:not(.active) {
+  background: var(--color-surface-3);
+  color: var(--color-text);
+}
+
+.segmented-btn.active {
+  background: var(--color-primary);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+}
+
+.segmented-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+/* ── Sharing Section ── */
+.quiz-sharing-section {
+  background: var(--color-surface);
+  border-left: 4px solid var(--color-primary);
+}
+
+.sharing-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sharing-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sharing-status-label {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.sharing-desc {
+  font-size: 13.5px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.sharing-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+}
+
 /* ── Shuffle toggle row ── */
 .shuffle-toggle-row {
   display: flex;
@@ -154,4 +236,3 @@
   text-align: center;
   user-select: none;
 }
-

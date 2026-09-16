@@ -169,6 +169,16 @@
   color: var(--color-secondary);
 }
 
+.review-type-tag--fib {
+  background: #e0f2f1;
+  color: #00796b;
+}
+
+[data-theme='dark'] .review-type-tag--fib {
+  background: rgba(0, 121, 107, 0.22);
+  color: #4db6ac;
+}
+
 .review-item-num {
   font-size: 12px;
   font-weight: 700;
@@ -322,6 +332,75 @@
   gap: 10px;
   justify-content: flex-end;
   flex-wrap: wrap;
+}
+
+/* ── Fill-in-the-blank review block ──────────────────────────────── */
+
+.fib-blank-display {
+  display: inline-block;
+  min-width: 80px;
+  border-bottom: 2px solid var(--color-text-muted);
+  margin: 0 3px;
+  vertical-align: baseline;
+  color: var(--color-text-muted);
+  font-style: italic;
+  letter-spacing: 2px;
+}
+
+.fib-review-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fib-review-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface-2);
+  font-size: 13.5px;
+}
+
+.fib-review-row--ok {
+  border-color: var(--color-success);
+  background: var(--color-success-light);
+}
+
+.fib-review-row--wrong {
+  border-color: var(--color-danger);
+  background: var(--color-danger-light);
+}
+
+.fib-review-row--accepted {
+  border-color: var(--color-warning);
+  background: var(--color-warning-light);
+}
+
+.fib-review-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.fib-review-value {
+  flex: 1;
+  font-weight: 600;
+  color: var(--color-text);
+  word-break: break-word;
+}
+
+.fib-review-value--correct {
+  color: var(--color-success);
+}
+
+.fib-review-empty {
+  color: var(--color-text-muted);
+  font-weight: 400;
 }
 
 @media (max-width: 480px) {

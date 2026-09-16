@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getAllQuizzes, deleteQuiz, duplicateQuiz } from '../data/quizService';
+import { getPublicQuizzes, deleteQuiz, duplicateQuiz } from '../data/quizService';
 import { useAuth } from '../context/AuthContext';
 import QuizCard from '../components/QuizCard';
 import SearchBar from '../components/SearchBar';
 import FilterControls from '../components/FilterControls';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { useNavigate } from 'react-router-dom';
-import './Dashboard.css';
+import './Explore.css';
 
 function applyFilters(quizzes, search, category, difficulty, sort) {
   let result = [...quizzes];
@@ -16,7 +16,8 @@ function applyFilters(quizzes, search, category, difficulty, sort) {
     result = result.filter(
       (quiz) =>
         quiz.title.toLowerCase().includes(q) ||
-        (quiz.description || '').toLowerCase().includes(q)
+        (quiz.description || '').toLowerCase().includes(q) ||
+        (quiz.creatorName || '').toLowerCase().includes(q)
     );
   }
 
@@ -39,28 +40,28 @@ function applyFilters(quizzes, search, category, difficulty, sort) {
   return result;
 }
 
-export default function Dashboard() {
+export default function Explore() {
   const navigate = useNavigate();
-  const { profile, user } = useAuth();
+  const { user } = useAuth();
   const [quizzes, setQuizzes] = useState([]);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
   const [difficulty, setDifficulty] = useState('All');
   const [sort, setSort] = useState('newest');
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const [loadingQuizzes, setLoadingQuizzes] = useState(true);
-  const [loadError, setLoadError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const loadQuizzes = useCallback(async () => {
-    setLoadingQuizzes(true);
-    setLoadError('');
+    setLoading(true);
+    setError('');
     try {
-      const data = await getAllQuizzes();
+      const data = await getPublicQuizzes();
       setQuizzes(data);
     } catch (err) {
-      setLoadError(err.message || 'Failed to load quizzes.');
+      setError(err.message || 'Failed to load public quizzes.');
     } finally {
-      setLoadingQuizzes(false);
+      setLoading(false);
     }
   }, []);
 
@@ -77,7 +78,7 @@ export default function Dashboard() {
       setDeleteTarget(null);
       await loadQuizzes();
     } catch (err) {
-      setLoadError(err.message || 'Failed to delete quiz.');
+      setError(err.message || 'Failed to delete quiz.');
       setDeleteTarget(null);
     }
   };
@@ -85,17 +86,11 @@ export default function Dashboard() {
   const handleDuplicate = async (id) => {
     try {
       await duplicateQuiz(id);
-      await loadQuizzes();
+      navigate('/');
     } catch (err) {
-      setLoadError(err.message || 'Failed to duplicate quiz.');
+      setError(err.message || 'Failed to duplicate quiz.');
     }
   };
-
-  const greeting = profile?.full_name
-    ? `Welcome back, ${profile.full_name.split(' ')[0]}! ⚡`
-    : user?.email
-      ? `Welcome back! ⚡`
-      : 'Welcome to Quizly ⚡';
 
   const filtered = applyFilters(quizzes, search, category, difficulty, sort);
   const hasFilters = search || category !== 'All' || difficulty !== 'All';
@@ -103,27 +98,29 @@ export default function Dashboard() {
   return (
     <div className="page-container">
       {/* Hero */}
-      <section className="dashboard-hero">
+      <section className="explore-hero">
         <div>
-          <h1 className="dashboard-hero-title">{greeting}</h1>
-          <p className="dashboard-hero-sub">
-            Create, study, and master any subject with custom quizzes.
+          <h1 className="explore-hero-title">Explore Public Quizzes 🌎</h1>
+          <p className="explore-hero-sub">
+            Discover and play community quizzes shared by creators worldwide.
           </p>
         </div>
-        <button className="btn btn-primary btn-lg" onClick={() => navigate('/create')}>
-          + Create Quiz
-        </button>
+        {user && (
+          <button className="btn btn-primary btn-lg" onClick={() => navigate('/create')}>
+            + Create a Quiz
+          </button>
+        )}
       </section>
 
-      {loadError && (
+      {error && (
         <div className="alert alert-error" style={{ marginBottom: 16 }} role="alert">
-          {loadError}
+          {error}
         </div>
       )}
 
       {/* Controls */}
-      <section className="dashboard-controls">
-        <SearchBar value={search} onChange={setSearch} />
+      <section className="explore-controls">
+        <SearchBar value={search} onChange={setSearch} placeholder="Search quizzes by title, description, or creator…" />
         <FilterControls
           category={category}
           difficulty={difficulty}
@@ -135,20 +132,20 @@ export default function Dashboard() {
       </section>
 
       {/* Header */}
-      <div className="dashboard-list-header">
-        <h2 className="dashboard-section-title">
-          My Quizzes
-          {!loadingQuizzes && quizzes.length > 0 && (
-            <span className="dashboard-count">{filtered.length} of {quizzes.length}</span>
+      <div className="explore-list-header">
+        <h2 className="explore-section-title">
+          Community Quizzes
+          {!loading && quizzes.length > 0 && (
+            <span className="explore-count">{filtered.length} of {quizzes.length}</span>
           )}
         </h2>
       </div>
 
-      {/* Loading */}
-      {loadingQuizzes ? (
-        <div className="dashboard-loading">
-          <div className="dashboard-spinner" />
-          <p>Loading your quizzes…</p>
+      {/* Grid or Empty */}
+      {loading ? (
+        <div className="explore-loading">
+          <div className="explore-spinner" />
+          <p>Loading public quizzes…</p>
         </div>
       ) : filtered.length > 0 ? (
         <div className="quiz-grid">
@@ -166,12 +163,18 @@ export default function Dashboard() {
         <div className="card">
           {quizzes.length === 0 ? (
             <div className="empty-state">
-              <div className="empty-state-icon">📚</div>
-              <h3>No quizzes yet</h3>
-              <p>Create your first quiz to get started. It only takes a minute!</p>
-              <button className="btn btn-primary" onClick={() => navigate('/create')}>
-                + Create your first quiz
-              </button>
+              <div className="empty-state-icon">🌎</div>
+              <h3>No public quizzes yet</h3>
+              <p>Be the first to share a public quiz with the Quizly community!</p>
+              {user ? (
+                <button className="btn btn-primary" onClick={() => navigate('/create')}>
+                  + Create a Public Quiz
+                </button>
+              ) : (
+                <button className="btn btn-primary" onClick={() => navigate('/sign-up')}>
+                  Sign Up to Create
+                </button>
+              )}
             </div>
           ) : (
             <div className="empty-state">
@@ -180,9 +183,12 @@ export default function Dashboard() {
               <p>
                 {hasFilters
                   ? 'Try adjusting your search or filters.'
-                  : 'No quizzes match your current filters.'}
+                  : 'No public quizzes match your current filters.'}
               </p>
-              <button className="btn btn-secondary" onClick={() => { setSearch(''); setCategory('All'); setDifficulty('All'); }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => { setSearch(''); setCategory('All'); setDifficulty('All'); }}
+              >
                 Clear filters
               </button>
             </div>

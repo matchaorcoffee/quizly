@@ -49,6 +49,13 @@ export default function Navbar() {
           <span className="navbar-name">Quizly</span>
         </Link>
         <nav className="navbar-nav">
+          <Link
+            to="/explore"
+            className={`navbar-link ${location.pathname === '/explore' ? 'active' : ''}`}
+          >
+            🌎 Explore
+          </Link>
+
           {user && (
             <>
               <Link
@@ -99,6 +106,9 @@ export default function Navbar() {
                     <span className="navbar-dropdown-email">{user.email}</span>
                   </div>
                   <hr className="navbar-dropdown-divider" />
+                  <Link to="/explore" className="navbar-dropdown-item" role="menuitem">
+                    🌎 Explore Quizzes
+                  </Link>
                   <Link to="/" className="navbar-dropdown-item" role="menuitem">
                     📋 My Quizzes
                   </Link>

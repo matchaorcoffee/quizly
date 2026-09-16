@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { v4 as uuidv4 } from 'uuid';
-import { saveQuiz, getQuizById } from '../data/quizService';
+import { saveQuiz, getQuizById, regenerateShareToken } from '../data/quizService';
 import QuestionEditor, { createEmptyQuestion } from '../components/QuestionEditor';
 import { CATEGORIES, DIFFICULTIES } from '../components/FilterControls';
+import ConfirmationModal from '../components/ConfirmationModal';
+import { useToast } from '../components/Toast';
 import './QuizForm.css';
 
 const FORM_CATEGORIES = CATEGORIES.filter((c) => c !== 'All');
 const FORM_DIFFICULTIES = DIFFICULTIES.filter((d) => d !== 'All');
+
+const BLANK_TOKEN = '{{blank}}';
 
 function validateQuiz(form, questions) {
   const errors = {};
@@ -22,24 +25,46 @@ function validateQuiz(form, questions) {
   let hasQuestionErrors = false;
   questions.forEach((q, i) => {
     const qErr = {};
-    if (!q.questionText.trim()) qErr.questionText = 'Question text is required.';
-    const emptyChoices = q.choices.filter((c) => !c.text.trim());
-    if (emptyChoices.length > 0) qErr.choices = 'All 4 choices must have text.';
+    const qType = q.questionType || 'single_choice';
+    const isFillBlank = qType === 'fill_in_blank';
+    const isMultiple = qType === 'multiple_choice';
 
-    const correctAnswers = q.correctAnswers || [];
-    const isMultiple = q.questionType === 'multiple_choice';
+    if (!q.questionText.trim()) {
+      qErr.questionText = 'Question text is required.';
+    }
 
-    if (isMultiple) {
-      if (correctAnswers.length < 2) {
-        qErr.correctAnswers = correctAnswers.length === 0
-          ? 'Select at least 2 correct answers for a Checkbox question.'
-          : 'Checkbox questions must have at least 2 correct answers.';
+    if (isFillBlank) {
+      // Must contain exactly one {{blank}}
+      const blankCount = (q.questionText.match(/\{\{blank\}\}/g) || []).length;
+      if (blankCount === 0) {
+        qErr.questionText = `Please add ${BLANK_TOKEN} to indicate where the learner should enter the answer.`;
+      } else if (blankCount > 1) {
+        qErr.questionText = `Only one ${BLANK_TOKEN} is supported per question.`;
+      }
+
+      // Must have at least one non-empty accepted answer
+      const answers = (q.acceptedAnswers || []).map((a) => (typeof a === 'string' ? a : '').trim()).filter(Boolean);
+      if (answers.length === 0) {
+        qErr.acceptedAnswers = 'At least one correct answer is required.';
       }
     } else {
-      if (correctAnswers.length === 0) {
-        qErr.correctAnswers = 'Select the correct answer.';
-      } else if (correctAnswers.length > 1) {
-        qErr.correctAnswers = 'Single Choice questions must have exactly 1 correct answer.';
+      const emptyChoices = (q.choices || []).filter((c) => !c.text.trim());
+      if (emptyChoices.length > 0) qErr.choices = 'All 4 choices must have text.';
+
+      const correctAnswers = q.correctAnswers || [];
+
+      if (isMultiple) {
+        if (correctAnswers.length < 2) {
+          qErr.correctAnswers = correctAnswers.length === 0
+            ? 'Select at least 2 correct answers for a Checkbox question.'
+            : 'Checkbox questions must have at least 2 correct answers.';
+        }
+      } else {
+        if (correctAnswers.length === 0) {
+          qErr.correctAnswers = 'Select the correct answer.';
+        } else if (correctAnswers.length > 1) {
+          qErr.correctAnswers = 'Single Choice questions must have exactly 1 correct answer.';
+        }
       }
     }
 
@@ -58,6 +83,7 @@ function validateQuiz(form, questions) {
 export default function QuizForm() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { showToast } = useToast();
   const isEditing = Boolean(id);
 
   const [form, setForm] = useState({
@@ -65,6 +91,8 @@ export default function QuizForm() {
     description: '',
     category: '',
     difficulty: '',
+    visibility: 'private',
+    shareToken: '',
     shuffleQuestions: false,
   });
   const [questions, setQuestions] = useState([createEmptyQuestion()]);
@@ -75,6 +103,8 @@ export default function QuizForm() {
   const [loadingForm, setLoadingForm] = useState(isEditing);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [showRegenModal, setShowRegenModal] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
 
   useEffect(() => {
     if (!isEditing) return;
@@ -87,13 +117,18 @@ export default function QuizForm() {
           description: existing.description || '',
           category: existing.category || '',
           difficulty: existing.difficulty || '',
+          visibility: existing.visibility || 'private',
+          shareToken: existing.shareToken || '',
           shuffleQuestions: existing.shuffleQuestions ?? false,
         });
         setQuestions(existing.questions.map((q) => ({
           ...q,
           questionType: q.questionType || 'single_choice',
           correctAnswers: q.correctAnswers || [],
-          choices: q.choices.map((c) => ({ ...c })),
+          choices: (q.choices || []).map((c) => ({ ...c })),
+          acceptedAnswers: q.questionType === 'fill_in_blank'
+            ? (q.acceptedAnswers?.length ? [...q.acceptedAnswers] : [''])
+            : (q.acceptedAnswers || []),
         })));
       })
       .catch(() => setNotFound(true))
@@ -132,6 +167,38 @@ export default function QuizForm() {
     setQuestionErrors(qe);
   };
 
+  const handleCopyLink = () => {
+    const origin = window.location.origin;
+    const base = '/quizly';
+    const isPub = form.visibility === 'public';
+    const link = isPub
+      ? `${origin}${base}/quiz/${id}`
+      : `${origin}${base}/quiz/private/${form.shareToken}`;
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(link)
+        .then(() => showToast('Share link copied to clipboard! 📋', 'success'))
+        .catch(() => showToast('Failed to copy link', 'error'));
+    } else {
+      showToast('Clipboard not supported', 'error');
+    }
+  };
+
+  const handleConfirmRegenerate = async () => {
+    if (!id) return;
+    setRegenerating(true);
+    try {
+      const newToken = await regenerateShareToken(id);
+      setForm((f) => ({ ...f, shareToken: newToken }));
+      setShowRegenModal(false);
+      showToast('Private share link regenerated!', 'success');
+    } catch (err) {
+      showToast(err.message || 'Failed to regenerate link', 'error');
+    } finally {
+      setRegenerating(false);
+    }
+  };
+
   const handleSave = async () => {
     setSubmitted(true);
     setSaveError('');
@@ -146,26 +213,21 @@ export default function QuizForm() {
 
     setSaving(true);
     try {
-      const now = new Date().toISOString();
-      let existingCreatedAt = now;
-      if (isEditing) {
-        try {
-          const existing = await getQuizById(id);
-          existingCreatedAt = existing?.createdAt || now;
-        } catch { /* use now */ }
-      }
+      // For new quizzes, do NOT pass `id` — the database assigns it.
+      // For edits, pass the existing id so saveQuiz knows to UPDATE.
       const quiz = {
-        id: isEditing ? id : uuidv4(),
+        ...(isEditing ? { id } : {}),
         title: form.title.trim(),
         description: form.description.trim(),
         category: form.category || 'General',
         difficulty: form.difficulty || 'Easy',
+        visibility: form.visibility || 'private',
+        shareToken: form.shareToken || undefined,
         shuffleQuestions: form.shuffleQuestions,
-        createdAt: isEditing ? existingCreatedAt : now,
-        updatedAt: now,
         questions,
       };
       await saveQuiz(quiz);
+      showToast(isEditing ? 'Quiz updated successfully! ✓' : 'Quiz created successfully! ✓', 'success');
       navigate('/');
     } catch (err) {
       setSaveError(err.message || 'Failed to save quiz. Please try again.');
@@ -276,6 +338,36 @@ export default function QuizForm() {
             </div>
           </div>
 
+          {/* Visibility Segmented Control */}
+          <div className="form-group">
+            <label className="form-label">Visibility</label>
+            <div className="segmented-control" role="radiogroup" aria-label="Quiz visibility">
+              <button
+                type="button"
+                role="radio"
+                aria-checked={form.visibility === 'private'}
+                className={`segmented-btn ${form.visibility === 'private' ? 'active' : ''}`}
+                onClick={() => updateForm('visibility', 'private')}
+              >
+                <span className="segmented-icon">🔒</span> Private
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={form.visibility === 'public'}
+                className={`segmented-btn ${form.visibility === 'public' ? 'active' : ''}`}
+                onClick={() => updateForm('visibility', 'public')}
+              >
+                <span className="segmented-icon">🌎</span> Public
+              </button>
+            </div>
+            <span className="form-hint">
+              {form.visibility === 'public'
+                ? 'Anyone can find and play this quiz in the Explore tab.'
+                : 'Hidden from Explore. Only accessible to you and anyone with the share link.'}
+            </span>
+          </div>
+
           {/* Shuffle toggle */}
           <div className="shuffle-toggle-row">
             <div className="shuffle-toggle-text">
@@ -298,6 +390,48 @@ export default function QuizForm() {
           </div>
         </div>
       </section>
+
+      {/* Sharing Section (shown when editing) */}
+      {isEditing && (
+        <section className="card quiz-form-section quiz-sharing-section animate-in">
+          <h2 className="quiz-form-section-title">
+            <span>🔗 Sharing & Link</span>
+          </h2>
+          <div className="sharing-content">
+            <div className="sharing-status">
+              <span className="sharing-status-label">Current Status:</span>
+              <span className={`badge ${form.visibility === 'public' ? 'badge-public' : 'badge-private'}`}>
+                {form.visibility === 'public' ? '🌎 Public' : '🔒 Private'}
+              </span>
+            </div>
+            <p className="sharing-desc">
+              {form.visibility === 'public'
+                ? 'This quiz is public. Anyone with the direct link or browsing Explore can take it.'
+                : 'This quiz is private. Only people who receive the secret link below can access it.'}
+            </p>
+
+            <div className="sharing-actions">
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleCopyLink}
+              >
+                📋 Copy Share Link
+              </button>
+              {form.visibility === 'private' && (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setShowRegenModal(true)}
+                  disabled={regenerating}
+                >
+                  🔄 Regenerate Link
+                </button>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Questions */}
       <section className="quiz-form-section">
@@ -344,6 +478,18 @@ export default function QuizForm() {
           {saving ? ' Saving…' : isEditing ? '💾 Save Changes' : '✓ Save Quiz'}
         </button>
       </div>
+
+      {/* Regenerate Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showRegenModal}
+        title="Regenerate Share Link"
+        message="Are you sure you want to regenerate the share link? Anyone with the previous private link will immediately lose access."
+        confirmLabel="Regenerate"
+        cancelLabel="Cancel"
+        variant="danger"
+        onConfirm={handleConfirmRegenerate}
+        onCancel={() => setShowRegenModal(false)}
+      />
     </div>
   );
 }
