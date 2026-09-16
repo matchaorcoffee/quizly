@@ -163,31 +163,33 @@ export default function Dashboard() {
           ))}
         </div>
       ) : (
-        <div className="card">
-          {quizzes.length === 0 ? (
-            <div className="empty-state">
-              <div className="empty-state-icon">📚</div>
-              <h3>No quizzes yet</h3>
-              <p>Create your first quiz to get started. It only takes a minute!</p>
-              <button className="btn btn-primary" onClick={() => navigate('/create')}>
-                + Create your first quiz
-              </button>
-            </div>
-          ) : (
-            <div className="empty-state">
-              <div className="empty-state-icon">🔍</div>
-              <h3>No matches found</h3>
-              <p>
-                {hasFilters
-                  ? 'Try adjusting your search or filters.'
-                  : 'No quizzes match your current filters.'}
-              </p>
-              <button className="btn btn-secondary" onClick={() => { setSearch(''); setCategory('All'); setDifficulty('All'); }}>
-                Clear filters
-              </button>
-            </div>
-          )}
-        </div>
+        loadError ? null : (
+          <div className="card">
+            {quizzes.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-state-icon">📚</div>
+                <h3>No quizzes yet</h3>
+                <p>Create your first quiz to get started. It only takes a minute!</p>
+                <button className="btn btn-primary" onClick={() => navigate('/create')}>
+                  + Create your first quiz
+                </button>
+              </div>
+            ) : (
+              <div className="empty-state">
+                <div className="empty-state-icon">🔍</div>
+                <h3>No matches found</h3>
+                <p>
+                  {hasFilters
+                    ? 'Try adjusting your search or filters.'
+                    : 'No quizzes match your current filters.'}
+                </p>
+                <button className="btn btn-secondary" onClick={() => { setSearch(''); setCategory('All'); setDifficulty('All'); }}>
+                  Clear filters
+                </button>
+              </div>
+            )}
+          </div>
+        )
       )}
 
       <ConfirmationModal

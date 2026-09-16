@@ -160,40 +160,42 @@ export default function Explore() {
           ))}
         </div>
       ) : (
-        <div className="card">
-          {quizzes.length === 0 ? (
-            <div className="empty-state">
-              <div className="empty-state-icon">🌎</div>
-              <h3>No public quizzes yet</h3>
-              <p>Be the first to share a public quiz with the Quizly community!</p>
-              {user ? (
-                <button className="btn btn-primary" onClick={() => navigate('/create')}>
-                  + Create a Public Quiz
+        error ? null : (
+          <div className="card">
+            {quizzes.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-state-icon">🌎</div>
+                <h3>No public quizzes yet</h3>
+                <p>Be the first to share a public quiz with the Quizly community!</p>
+                {user ? (
+                  <button className="btn btn-primary" onClick={() => navigate('/create')}>
+                    + Create a Public Quiz
+                  </button>
+                ) : (
+                  <button className="btn btn-primary" onClick={() => navigate('/sign-up')}>
+                    Sign Up to Create
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="empty-state">
+                <div className="empty-state-icon">🔍</div>
+                <h3>No matches found</h3>
+                <p>
+                  {hasFilters
+                    ? 'Try adjusting your search or filters.'
+                    : 'No public quizzes match your current filters.'}
+                </p>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => { setSearch(''); setCategory('All'); setDifficulty('All'); }}
+                >
+                  Clear filters
                 </button>
-              ) : (
-                <button className="btn btn-primary" onClick={() => navigate('/sign-up')}>
-                  Sign Up to Create
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="empty-state">
-              <div className="empty-state-icon">🔍</div>
-              <h3>No matches found</h3>
-              <p>
-                {hasFilters
-                  ? 'Try adjusting your search or filters.'
-                  : 'No public quizzes match your current filters.'}
-              </p>
-              <button
-                className="btn btn-secondary"
-                onClick={() => { setSearch(''); setCategory('All'); setDifficulty('All'); }}
-              >
-                Clear filters
-              </button>
-            </div>
-          )}
-        </div>
+              </div>
+            )}
+          </div>
+        )
       )}
 
       <ConfirmationModal

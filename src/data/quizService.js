@@ -24,8 +24,16 @@ const DEV = import.meta.env.DEV;
 function log(...args) {
   if (DEV) console.log('[QuizService]', ...args);
 }
-function logError(...args) {
-  if (DEV) console.error('[QuizService ERROR]', ...args);
+function logError(action, error, details = {}) {
+  if (DEV) {
+    console.error(`[QuizService ERROR] ${action}:`, {
+      message: error?.message,
+      code: error?.code,
+      details: error?.details,
+      hint: error?.hint,
+      ...details,
+    });
+  }
 }
 
 // ── Shape mappers ──────────────────────────────────────────────────────────
@@ -83,7 +91,10 @@ export async function getAllQuizzes() {
     .eq('user_id', user.id)
     .order('created_at', { ascending: false });
 
-  if (error) throw error;
+  if (error) {
+    logError('getAllQuizzes query failed', error, { table: 'quizzes' });
+    throw error;
+  }
   return (data || []).map((row) => mapQuiz({ ...row, questions: [] }));
 }
 
@@ -104,7 +115,10 @@ export async function getPublicQuizzes() {
     .eq('visibility', 'public')
     .order('created_at', { ascending: false });
 
-  if (error) throw error;
+  if (error) {
+    logError('getPublicQuizzes query failed', error, { table: 'quizzes' });
+    throw error;
+  }
   return (data || []).map((row) => ({
     ...mapQuiz(row),
     questions: row.questions || [],
@@ -190,7 +204,7 @@ export async function saveQuiz(quiz) {
   // ── Step 1: Verify authentication ────────────────────────
   const { data: authData, error: authError } = await supabase.auth.getUser();
   if (authError || !authData?.user) {
-    logError('Auth check failed:', authError);
+    logError('Auth check failed', authError, { table: 'auth.users' });
     throw new Error('Your session has expired. Please sign in again.');
   }
   const user = authData.user;
@@ -226,11 +240,11 @@ export async function saveQuiz(quiz) {
       .single();
 
     if (insertError) {
-      logError('Quiz insert failed:', insertError);
+      logError('Quiz insert failed', insertError, { table: 'quizzes' });
       throw new Error(`Failed to create quiz: ${insertError.message}`);
     }
     if (!insertedQuiz?.id) {
-      logError('Quiz insert returned no row — possible RLS violation');
+      logError('Quiz insert returned no row', new Error('No row returned'), { table: 'quizzes' });
       throw new Error('Quiz could not be saved. Please check your connection and try again.');
     }
     savedQuizId = insertedQuiz.id;
@@ -257,11 +271,11 @@ export async function saveQuiz(quiz) {
       .single();
 
     if (updateError) {
-      logError('Quiz update failed:', updateError);
+      logError('Quiz update failed', updateError, { table: 'quizzes', quizId: savedQuizId });
       throw new Error(`Failed to update quiz: ${updateError.message}`);
     }
     if (!updatedQuiz?.id) {
-      logError('Quiz update returned no row — RLS blocked or quiz not found');
+      logError('Quiz update returned no row', new Error('No row returned'), { table: 'quizzes', quizId: savedQuizId });
       throw new Error('Quiz could not be updated. Make sure you own this quiz.');
     }
     log('Quiz updated:', updatedQuiz.id);
@@ -274,7 +288,7 @@ export async function saveQuiz(quiz) {
     .delete()
     .eq('quiz_id', savedQuizId);
   if (delError) {
-    logError('Question delete failed:', delError);
+    logError('Question delete failed', delError, { table: 'questions', quizId: savedQuizId });
     throw new Error(`Failed to clear old questions: ${delError.message}`);
   }
 
@@ -300,11 +314,11 @@ export async function saveQuiz(quiz) {
       .single();
 
     if (qError) {
-      logError(`Question ${qi + 1} insert failed:`, qError);
+      logError(`Question ${qi + 1} insert failed`, qError, { table: 'questions', questionIndex: qi });
       throw new Error(`Failed to save question ${qi + 1}: ${qError.message}`);
     }
     if (!insertedQuestion?.id) {
-      logError(`Question ${qi + 1} insert returned no row`);
+      logError(`Question ${qi + 1} insert returned no row`, new Error('No row returned'), { table: 'questions', questionIndex: qi });
       throw new Error(`Question ${qi + 1} could not be saved. Please try again.`);
     }
     const questionId = insertedQuestion.id;
@@ -330,7 +344,7 @@ export async function saveQuiz(quiz) {
         .insert(answerRows);
 
       if (aError) {
-        logError(`Accepted answers for question ${qi + 1} failed:`, aError);
+        logError(`Accepted answers for question ${qi + 1} failed`, aError, { table: 'question_answers', questionId });
         throw new Error(`Failed to save accepted answers for question ${qi + 1}: ${aError.message}`);
       }
       log(`Accepted answers for question ${qi + 1} inserted (${answerRows.length} rows)`);
@@ -350,7 +364,7 @@ export async function saveQuiz(quiz) {
           .insert(choiceRows);
 
         if (cError) {
-          logError(`Choices for question ${qi + 1} failed:`, cError);
+          logError(`Choices for question ${qi + 1} failed`, cError, { table: 'choices', questionId });
           throw new Error(`Failed to save choices for question ${qi + 1}: ${cError.message}`);
         }
         log(`Choices for question ${qi + 1} inserted (${choiceRows.length} rows)`);
