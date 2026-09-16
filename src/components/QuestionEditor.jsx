@@ -258,8 +258,8 @@ export default function QuestionEditor({ question, index, onUpdate, onDelete, er
             />
             <span className="type-option-icon">▭</span>
             <span>
-              <strong>Fill in the Blank</strong>
-              <small>Type the answer</small>
+              <strong>Fill in the Blanks</strong>
+              <small>Type the answer into the blank</small>
             </span>
           </label>
         </div>

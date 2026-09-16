@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { getQuizById } from '../data/quizService';
 import ProgressBar from '../components/ProgressBar';
@@ -73,15 +73,16 @@ export default function QuizPlayer() {
   const [loading, setLoading] = useState(!preloadedQuiz);
   const [loadError, setLoadError] = useState('');
 
-  // Stable ref so shuffled order is computed exactly once per mount.
-  const sessionQuestionsRef = useRef(null);
+  const [sessionQuestions, setSessionQuestions] = useState(null);
 
   useEffect(() => {
     if (preloadedQuiz && preloadedQuiz.questions?.length > 0) {
       setQuiz(preloadedQuiz);
-      sessionQuestionsRef.current = preloadedQuiz.shuffleQuestions
-        ? shuffleArray(preloadedQuiz.questions)
-        : [...preloadedQuiz.questions];
+      setSessionQuestions(
+        preloadedQuiz.shuffleQuestions
+          ? shuffleArray(preloadedQuiz.questions)
+          : [...preloadedQuiz.questions]
+      );
       setLoading(false);
       return;
     }
@@ -94,9 +95,11 @@ export default function QuizPlayer() {
           return;
         }
         setQuiz(q);
-        sessionQuestionsRef.current = q.shuffleQuestions
-          ? shuffleArray(q.questions)
-          : [...q.questions];
+        setSessionQuestions(
+          q.shuffleQuestions
+            ? shuffleArray(q.questions)
+            : [...q.questions]
+        );
       })
       .catch((err) => {
         setLoadError(err.message || 'Failed to load quiz.');
@@ -139,9 +142,9 @@ export default function QuizPlayer() {
     );
   }
 
-  if (!quiz || !sessionQuestionsRef.current) return null;
+  if (!quiz || !sessionQuestions) return null;
 
-  const questions = sessionQuestionsRef.current;
+  const questions = sessionQuestions;
   const totalQ = questions.length;
   const currentQ = questions[currentIndex];
   const isMultiple = currentQ.questionType === 'multiple_choice';

@@ -42,10 +42,24 @@ function validateQuiz(form, questions) {
         qErr.questionText = `Only one ${BLANK_TOKEN} is supported per question.`;
       }
 
-      // Must have at least one non-empty accepted answer
+      // Must have at least one non-empty accepted answer, and prevent duplicate accepted answers
       const answers = (q.acceptedAnswers || []).map((a) => (typeof a === 'string' ? a : '').trim()).filter(Boolean);
       if (answers.length === 0) {
         qErr.acceptedAnswers = 'At least one correct answer is required.';
+      } else {
+        const normalizedSet = new Set();
+        let hasDuplicates = false;
+        for (const ans of answers) {
+          const norm = ans.toLowerCase().replace(/\s+/g, ' ');
+          if (normalizedSet.has(norm)) {
+            hasDuplicates = true;
+            break;
+          }
+          normalizedSet.add(norm);
+        }
+        if (hasDuplicates) {
+          qErr.acceptedAnswers = 'Duplicate accepted answers are not allowed.';
+        }
       }
     } else {
       const emptyChoices = (q.choices || []).filter((c) => !c.text.trim());

@@ -159,7 +159,8 @@ export async function getQuizByShareToken(token) {
       ),
       questions (
         *,
-        choices (*)
+        choices (*),
+        question_answers (*)
       )
     `)
     .eq('share_token', token)
